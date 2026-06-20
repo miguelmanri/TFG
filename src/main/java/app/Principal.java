@@ -33,6 +33,8 @@ public class Principal {
     private final String rdfPath;
     private final String outputPath;
     private final int timeout;
+    private final Set<String> strategies;
+    private final Set<String> patterns;
 
     private final RDFLoader rdfLoader;
     private final RDFTypeExtractor rdfTypeExtractor;
@@ -46,11 +48,15 @@ public class Principal {
     public Principal(
             String rdfPath,
             String outputPath,
-            int timeout) throws Exception {
+            int timeout,
+            Set<String> strategies,
+            Set<String> patterns) throws Exception {
 
         this.rdfPath = rdfPath;
         this.outputPath = outputPath;
         this.timeout = timeout;
+        this.strategies = strategies;
+        this.patterns = patterns;
 
         rdfLoader        = new RDFLoader();
         rdfTypeExtractor = new RDFTypeExtractor();
@@ -77,13 +83,12 @@ public class Principal {
         logger.log("Tripletas cargadas: " + originalModel.size());
 
         // ---------------------------------
-        // 2. Extraccion clases rdf:type
+        // 2. Extraccion clases usando patrones seleccionados
         // ---------------------------------
 
-        logger.log("Extrayendo clases rdf:type...");
+        logger.log("Extrayendo clases usando patrones: " + patterns);
 
-        Set<Resource> classes =
-                rdfTypeExtractor.extractTypes(originalModel);
+        Set<Resource> classes = rdfTypeExtractor.extractTypes(originalModel, patterns);
 
         logger.log("Clases detectadas: " + classes.size());
 
@@ -93,30 +98,32 @@ public class Principal {
 
         logger.log("Generado mapeo de ontologias...");
 
-        Map<String, Set<OWLEntity>> mapping =
-                ontologyMapper.createMapping(classes);
+        Map<String, Set<OWLEntity>> mapping = ontologyMapper.createMapping(classes);
 
         logger.log("Ontologias detectadas: " + mapping.size());
 
         // ---------------------------------
-        // 4. Ejecucion de las 3 estrategias
+        // 4. Ejecucion de las estrategias seleccionadas
         // ---------------------------------
 
-        for (Map.Entry<String, LocalityClass> strategyEntry
-                : STRATEGIES.entrySet()) {
+        for (Map.Entry<String, LocalityClass> strategyEntry : STRATEGIES.entrySet()) {
 
-            String strategyName        = strategyEntry.getKey();
+            String strategyName = strategyEntry.getKey();
+
+            // Se saltan las estrategias que no se han pedido
+            if (!strategies.contains(strategyName)) {
+                continue;
+            }
+
             LocalityClass localityClass = strategyEntry.getValue();
 
             logger.log("\n----------------------------");
             logger.log("Estrategia: " + strategyName);
             logger.log("----------------------------");
 
-            OWLOntologyManager manager =
-                    OWLManager.createOWLOntologyManager();
+            OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 
-            OWLOntology enrichedOntology =
-                    manager.createOntology();
+            OWLOntology enrichedOntology = manager.createOntology();
 
             // ---------------------------------
             // 5. Extraccion modulo por ontologia
@@ -124,16 +131,11 @@ public class Principal {
 
             for (String ontologyIRI : mapping.keySet()) {
 
-                logger.log(
-                        "\nProcesando ontologia: "
-                                + ontologyIRI);
+                logger.log("\nProcesando ontologia: " + ontologyIRI);
 
-                Set<OWLEntity> signature =
-                        mapping.get(ontologyIRI);
+                Set<OWLEntity> signature = mapping.get(ontologyIRI);
 
-                logger.log(
-                        "Tamaño conjunto semilla: "
-                                + signature.size());
+                logger.log("Tamaño conjunto semilla: " + signature.size());
 
                 ModuleExtractionTask task =
                         new ModuleExtractionTask(

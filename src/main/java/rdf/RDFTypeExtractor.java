@@ -39,7 +39,7 @@ public class RDFTypeExtractor {
             "http://www.w3.org/2000/01/rdf-schema#isDefinedBy"
     };
 
-    public Set<Resource> extractTypes(Model model) {
+    public Set<Resource> extractTypes(Model model, Set<String> patterns) {
 
         Set<Resource> classes = new HashSet<>();
 
@@ -47,37 +47,26 @@ public class RDFTypeExtractor {
         // Patron 1: rdf:type
         // ejemplo :juan rdf:type foaf:Person
         // ---------------------------------
-        extractFromPredicate(
-                model,
-                RDF.type.getURI(),
-                classes,
-                "rdf:type"
-        );
+        if (patterns.contains("type")) {
+            extractFromPredicate(model, RDF.type.getURI(), classes, "rdf:type");
+        }
 
         // ---------------------------------
         // Patron 2: rdfs:subClassOf
         // ejemplo <CRMHS> rdfs:subClassOf <SO_0000727>
         // ---------------------------------
-        extractFromPredicate(
-                model,
-                RDFS.subClassOf.getURI(),
-                classes,
-                "rdfs:subClassOf"
-        );
+        if (patterns.contains("subclass")) {
+            extractFromPredicate(model, RDFS.subClassOf.getURI(), classes, "rdfs:subClassOf");
+        }
 
         // ---------------------------------
         // Patron 3: predicados adicionales
         // ejemplo <TFBS_X> TXPO_0003500 <CL_0000084>
         // ---------------------------------
-        for (String predicateURI : ADDITIONAL_PREDICATES) {
-            Property predicate =
-                    model.createProperty(predicateURI);
-            extractFromPredicate(
-                    model,
-                    predicateURI,
-                    classes,
-                    predicateURI
-            );
+        if (patterns.contains("relation")) {
+            for (String predicateURI : ADDITIONAL_PREDICATES) {
+                extractFromPredicate(model, predicateURI, classes, predicateURI);
+            }
         }
 
         return classes;
@@ -89,12 +78,9 @@ public class RDFTypeExtractor {
             Set<Resource> classes,
             String label) {
 
-        Property predicate =
-                model.createProperty(predicateURI);
+        Property predicate = model.createProperty(predicateURI);
 
-        StmtIterator stmts =
-                model.listStatements(
-                        null, predicate, (RDFNode) null);
+        StmtIterator stmts = model.listStatements(null, predicate, (RDFNode) null);
 
         while (stmts.hasNext()) {
             Statement stmt = stmts.next();
@@ -104,9 +90,7 @@ public class RDFTypeExtractor {
                 Resource cls = object.asResource();
                 if (isExternalOntologyClass(cls)) {
                     classes.add(cls);
-                    System.out.println(
-                            "[" + label + "] Clase detectada: "
-                                    + cls.getURI());
+                    System.out.println("[" + label + "] Clase detectada: " + cls.getURI());
                 }
             }
         }
