@@ -34,9 +34,6 @@ public class RDFTypeExtractor {
 
             // in taxon (RO) : NCBITaxon
             "http://purl.obolibrary.org/obo/RO_0002162",
-
-            // is defined by (RDFS) : ECO, MI, OBI, NCIT
-            "http://www.w3.org/2000/01/rdf-schema#isDefinedBy"
     };
 
     public Set<Resource> extractTypes(Model model, Set<String> patterns) {
@@ -57,6 +54,13 @@ public class RDFTypeExtractor {
         // ---------------------------------
         if (patterns.contains("subclass")) {
             extractFromPredicate(model, RDFS.subClassOf.getURI(), classes, "rdfs:subClassOf");
+        }
+
+        // ---------------------------------
+        // Patron 3: rdfs:isDefinedBy
+        // ---------------------------------
+        if (patterns.contains("definedby")) {
+            extractFromPredicate(model, RDFS.isDefinedBy.getURI(), classes, "rdfs:isDefinedBy");
         }
 
         // ---------------------------------
